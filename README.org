@@ -40,6 +40,7 @@ All non-Emacs themes are generated from the Emacs palette via ~make export~. Lig
 - [[#pi][Pi]]
 - [[#omp][OMP]]
 - [[#opencode][OpenCode]]
+- [[#discord][Discord]]
 ** Emacs
 *** straight.el
 #+begin_src emacs-lisp
@@ -178,3 +179,10 @@ mkdir -p ~/.config/opencode/themes && \
 { "theme": "nibelung" }
 #+end_src
 Both light and dark variants included. OpenCode selects based on terminal background.
+
+** Discord
+Generates ~.theme.css~ files for Vencord/BetterDiscord (light and dark), using Discord visual-refresh tokens from the nibelung palette.
+#+begin_src sh
+make install-discord
+#+end_src
+This copies both themes to ~~/.config/Vencord/themes/~. Requires Vencord on the official Discord client; enable the theme in ~Settings -> Vencord -> Themes~.
