@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Nibelung theme generator -- exports palettes from Emacs and generates themes
 for VSCode, Zed, Neovim, IntelliJ IDEA, Alacritty, Caelestia/Quickshell,
-OpenCode, Pi, and OMP."""
+OpenCode, Pi, OMP, and Discord."""
 
 import argparse
 import json
@@ -38,6 +38,24 @@ def _blend(hex1, hex2, ratio=0.5):
     g = int(g1 + (g2 - g1) * ratio)
     b = int(b1 + (b2 - b1) * ratio)
     return f"#{r:02x}{g:02x}{b:02x}"
+
+
+def _rgba(hex_color, alpha):
+    """Convert #RRGGBB to an rgba(r, g, b, a) string."""
+    r = int(hex_color[1:3], 16)
+    g = int(hex_color[3:5], 16)
+    b = int(hex_color[5:7], 16)
+    return f"rgba({r}, {g}, {b}, {alpha})"
+
+
+def _darken(hex_color, pct):
+    """Blend a color toward black by pct percent."""
+    return _blend(hex_color, "#000000", pct / 100)
+
+
+def _lighten(hex_color, pct):
+    """Blend a color toward white by pct percent."""
+    return _blend(hex_color, "#ffffff", pct / 100)
 
 
 def roles(p):
@@ -1074,6 +1092,320 @@ def generate_omp(light_p, dark_p, output_dir):
     print(f"OMP: wrote {os.path.dirname(out)}")
 
 
+# ---------------------------------------------------------------------------
+# Discord backend
+# ---------------------------------------------------------------------------
+
+
+def _discord_roles(p, variant):
+    """Discord visual-refresh role tokens -> Nibelung palette (catppuccin-style keys)."""
+    if variant == "dark":
+        crust = _darken(p["bg"], 35)
+        mantle = p["level0"]
+        base = p["bg"]
+        app_frame = _darken(p["bg"], 45)
+        surface0 = p["level1"]
+        brand = p["accent-match"]
+    else:
+        crust = p["level1"]
+        mantle = p["level0"]
+        base = p["bg"]
+        app_frame = p["level1"]
+        surface0 = p["level0"]
+        brand = p["rainbow-blue"]
+    return {
+        "crust":     crust,
+        "mantle":    mantle,
+        "base":      base,
+        "app_frame": app_frame,
+        "surface0":  surface0,
+        "surface1":  p["level1"],
+        "surface2":  p["level2"],
+        "text":      p["fg"],
+        "subtext1":  p["level4"],
+        "subtext0":  p["level3"],
+        "overlay0":  p["level3"],
+        "overlay1":  p["level2"],
+        "overlay2":  p["level2"],
+        "brand":     brand,
+        "blue":      brand,
+        "lavender":  p["accent-light"],
+        "sky":       p["rainbow-bluelight"],
+        "sapphire":  p["rainbow-blue"],
+        "mauve":     p["rainbow-magenta"],
+        "pink":      p["rainbow-magenta"],
+        "peach":     p["rainbow-orange"],
+        "rosewater": p["rainbow-orange"],
+        "green":     p["rainbow-green"],
+        "yellow":    p["rainbow-yellow"],
+        "red":       p["rainbow-red"],
+    }
+
+
+def _discord_theme(p, name, variant):
+    r = _discord_roles(p, variant)
+    selector = (".theme-dark, .visual-refresh.theme-dark, .visual-refresh .theme-dark"
+                if variant == "dark"
+                else ".theme-light, .visual-refresh.theme-light, .visual-refresh .theme-light")
+    lines = [
+        "/**",
+        f" * @name {name}",
+        " * @author veschin",
+        " * @description Cold gray + blue accents, generated from the nibelung palette. Run `make export` to regenerate.",
+        " * @version 1.0.0",
+        " * @website https://github.com/veschin/nibelung-theme",
+        " **/",
+        "",
+        f"{selector} {{",
+    ]
+
+    def prop(token, value):
+        lines.append(f"    --{token}: {value};")
+
+    # Brand scale
+    lines.append("    /* Brand scale */")
+    for step, pct in [(100, 45), (130, 42.5), (160, 40), (200, 37.5), (230, 35),
+                      (260, 32.5), (300, 30), (330, 25), (360, 20), (400, 15),
+                      (430, 10), (460, 5)]:
+        prop(f"brand-{step}", _lighten(r["brand"], pct))
+    prop("brand-500", r["brand"])
+    for step, pct in [(530, 5), (560, 10), (600, 15), (630, 20), (660, 25),
+                      (700, 30), (730, 32.5), (760, 35), (800, 37.5), (830, 40),
+                      (860, 42.5), (900, 45)]:
+        prop(f"brand-{step}", _darken(r["brand"], pct))
+    for i in range(1, 20):
+        alpha = round(i * 0.05, 2)
+        prop(f"brand-{i * 5:02d}a", _rgba(r["brand"], alpha))
+    prop("opacity-blurple-8", _rgba(r["brand"], 0.08))
+    prop("opacity-blurple-16", _rgba(r["brand"], 0.16))
+    prop("opacity-blurple-24", _rgba(r["brand"], 0.24))
+    prop("opacity-blurple-32", _rgba(r["brand"], 0.32))
+    prop("opacity-blurple-60", _rgba(r["brand"], 0.60))
+    prop("blurple-50", r["brand"])
+    prop("blurple-60", _darken(r["brand"], 10))
+
+    # Backgrounds
+    lines.append("    /* Backgrounds */")
+    for token, key in [
+        ("app-frame-background", "app_frame"), ("background-base-lowest", "crust"),
+        ("background-base-lower", "mantle"), ("background-base-low", "base"),
+        ("background-secondary-alt", "mantle"), ("background-accent", "surface1"),
+        ("background-surface-high", "base"), ("background-surface-higher", "surface0"),
+        ("background-surface-highest", "surface0"), ("bg-surface-raised", "mantle"),
+        ("background-gradient-highest", "base"), ("home-background", "base"),
+        ("chat-background", "base"), ("chat-background-default", "base"),
+        ("chat-border", "crust"), ("channeltextarea-background", "mantle"),
+        ("input-background-default", "crust"), ("modal-background", "base"),
+        ("modal-footer-background", "base"), ("card-background-default", "surface0"),
+        ("background-code", "base"), ("custom-channel-members-bg", "mantle"),
+        ("custom-status-bubble-background", "crust"),
+        ("custom-status-bubble-background-color", "mantle"),
+        ("user-profile-overlay-background", "mantle"),
+        ("user-profile-overlay-background-hover", "surface0"),
+        ("spoiler-revealed-background", "surface0"),
+        ("spoiler-hidden-background", "surface2"), ("plum-23", "base"),
+        ("__header-bar-background", "mantle"),
+    ]:
+        prop(token, r[key])
+
+    # Text
+    lines.append("    /* Text */")
+    for token, key in [
+        ("text-default", "text"), ("text-muted", "subtext0"), ("text-subtle", "subtext1"),
+        ("text-link", "blue"), ("text-brand", "brand"), ("text-strong", "text"),
+        ("text-feedback-positive", "green"), ("text-feedback-critical", "red"),
+        ("text-feedback-warning", "yellow"), ("text-feedback-info", "sky"),
+        ("channels-default", "subtext0"), ("channel-icon", "subtext0"),
+        ("chat-text-muted", "subtext0"), ("textbox-markdown-syntax", "overlay0"),
+        ("input-text-default", "text"), ("input-placeholder-text-default", "subtext1"),
+        ("logo-primary", "text"), ("white", "text"), ("white-500", "text"),
+        ("primary-100", "subtext1"), ("primary-200", "subtext0"),
+        ("primary-300", "subtext1"), ("primary-400", "subtext1"),
+        ("primary-630", "surface0"), ("primary-700", "surface1"),
+        ("primary-800", "crust"), ("black-500", "crust"), ("badge-text-brand", "base"),
+    ]:
+        prop(token, r[key])
+    prop("channel-text-area-placeholder", _rgba(r["text"], 0.5))
+
+    # Interactive & icons
+    lines.append("    /* Interactive & icons */")
+    for token, key in [
+        ("interactive-icon-default", "text"), ("interactive-icon-hover", "text"),
+        ("interactive-icon-active", "text"), ("interactive-text-default", "text"),
+        ("interactive-text-hover", "text"), ("interactive-text-active", "text"),
+        ("interactive-muted", "overlay0"), ("icon-default", "text"),
+        ("icon-strong", "text"), ("icon-subtle", "subtext1"),
+        ("icon-muted", "subtext0"), ("icon-voice-muted", "red"),
+    ]:
+        prop(token, r[key])
+    prop("interactive-background-hover", _rgba(r["overlay2"], 0.15))
+    prop("interactive-background-selected", _rgba(r["overlay0"], 0.2))
+    prop("interactive-background-active", _rgba(r["text"], 0.17))
+
+    # Borders
+    lines.append("    /* Borders */")
+    for token, key in [
+        ("border-muted", "surface0"), ("border-strong", "mantle"),
+        ("border-normal", "crust"), ("border-subtle", "base"),
+        ("checkbox-border-default", "overlay0"), ("checkbox-icon-active", "crust"),
+        ("radio-thumb-background-active", "crust"),
+        ("input-border-default", "overlay0"),
+    ]:
+        prop(token, r[key])
+
+    # Modifiers
+    lines.append("    /* Modifiers */")
+    prop("background-mod-muted", _rgba(r["surface2"], 0.05))
+    prop("background-mod-normal", _rgba(r["surface2"], 0.15))
+    prop("background-mod-subtle", _rgba(r["surface2"], 0.25))
+    prop("background-mod-strong", _rgba(r["surface2"], 0.45))
+    prop("mention-foreground", r["brand"])
+    prop("mention-background", p["accent-subtle"])
+    prop("message-mentioned-background-default", _blend(p["rainbow-yellow"], r["base"], 0.85))
+    prop("message-mentioned-background-hover", _blend(p["rainbow-yellow"], r["base"], 0.9))
+    prop("message-background-hover", _rgba(r["crust"], 0.3))
+    prop("message-highlight-background-default", _blend(p["accent-subtle"], r["base"], 0.5))
+    prop("message-highlight-background-hover", _blend(p["accent-subtle"], r["base"], 0.65))
+    prop("message-automod-background-default", _rgba(r["rosewater"], 0.05))
+    prop("message-automod-background-hover", _rgba(r["rosewater"], 0.1))
+    prop("message-reacted-background-default", _rgba(r["brand"], 0.3))
+    prop("message-reacted-text-default", r["brand"])
+
+    # Controls
+    lines.append("    /* Controls */")
+    for token, key in [
+        ("control-brand-foreground", "brand"), ("control-brand-foreground-new", "brand"),
+        ("control-primary-background-default", "brand"),
+        ("control-secondary-background-default", "surface1"),
+        ("control-secondary-border-default", "surface0"),
+        ("control-secondary-text-default", "text"),
+        ("control-secondary-text-hover", "text"),
+        ("control-critical-primary-background-default", "red"),
+        ("control-critical-primary-text-default", "base"),
+        ("control-critical-primary-text-hover", "base"),
+        ("control-critical-secondary-border-default", "red"),
+        ("control-critical-secondary-text-default", "text"),
+        ("control-critical-secondary-text-hover", "base"),
+        ("control-critical-secondary-text-active", "base"),
+        ("control-connected-background-default", "green"),
+        ("control-connected-border-default", "green"),
+        ("control-connected-border-hover", "green"),
+        ("control-connected-border-active", "green"),
+        ("button-outline-primary-text", "text"),
+        ("button-outline-brand-text", "text"),
+    ]:
+        prop(token, r[key])
+    prop("control-critical-secondary-background-default", "transparent")
+    prop("control-primary-background-hover", _darken(r["brand"], 7.5))
+    prop("control-primary-background-active", _darken(r["brand"], 12.5))
+    prop("control-secondary-background-hover", _darken(r["surface1"], 5))
+    prop("control-secondary-background-active", _darken(r["surface1"], 7.5))
+    prop("control-critical-primary-background-hover", _darken(r["red"], 5))
+    prop("control-critical-primary-background-active", _darken(r["red"], 10))
+    prop("control-critical-secondary-background-hover", _darken(r["red"], 2.5))
+    prop("control-critical-secondary-background-active", _darken(r["red"], 5))
+    prop("control-critical-secondary-border-hover", _darken(r["red"], 2.5))
+    prop("control-critical-secondary-border-active", _darken(r["red"], 2.5))
+    prop("control-connected-background-hover", _darken(r["green"], 5))
+    prop("control-connected-background-active", _darken(r["green"], 7.5))
+    prop("button-outline-brand-background-hover", _darken(r["brand"], 2.5))
+    prop("button-outline-brand-border-active", _darken(r["brand"], 2.5))
+
+    # Status
+    lines.append("    /* Status */")
+    for token, key in [
+        ("status-positive", "green"), ("status-positive-background", "green"),
+        ("status-positive-text", "base"), ("status-warning", "yellow"),
+        ("status-warning-background", "yellow"), ("status-warning-text", "base"),
+        ("status-danger", "red"), ("text-status-online", "green"),
+        ("text-status-idle", "yellow"), ("text-status-dnd", "red"),
+        ("text-status-offline", "subtext1"), ("icon-status-online", "green"),
+        ("icon-status-idle", "yellow"), ("icon-status-dnd", "red"),
+        ("icon-status-offline", "subtext1"), ("green-300", "green"),
+        ("green-360", "green"), ("yellow-300", "yellow"), ("yellow-360", "yellow"),
+        ("red-400", "red"),
+    ]:
+        prop(token, r[key])
+    prop("red-430", _darken(r["red"], 10))
+    prop("red-500", _darken(r["red"], 15))
+    prop("blue-500", _darken(r["blue"], 10))
+    prop("blue-530", _darken(r["blue"], 15))
+
+    # Feedback & notices
+    lines.append("    /* Feedback & notices */")
+    prop("background-feedback-positive", _rgba(r["green"], 0.15))
+    prop("icon-feedback-positive", r["green"])
+    prop("background-feedback-warning", _rgba(r["yellow"], 0.15))
+    prop("icon-feedback-warning", r["yellow"])
+    prop("background-feedback-critical", _rgba(r["red"], 0.15))
+    prop("icon-feedback-critical", r["red"])
+    prop("background-feedback-info", _rgba(r["sky"], 0.15))
+    prop("icon-feedback-info", r["sky"])
+    prop("background-feedback-notification", r["red"])
+    prop("icon-feedback-notification", r["red"])
+    prop("badge-notification-background", r["red"])
+    prop("notice-background-critical", r["red"])
+    prop("notice-background-info", r["blue"])
+    prop("notice-background-positive", r["green"])
+    prop("notice-background-warning", r["yellow"])
+    prop("notice-text-critical", r["base"])
+    prop("notice-text-info", r["base"])
+    prop("notice-text-positive", r["base"])
+    prop("notice-text-warning", r["base"])
+
+    # Scrollbars
+    lines.append("    /* Scrollbars */")
+    prop("scrollbar-thin-thumb", r["brand"])
+    prop("scrollbar-thin-track", "transparent")
+    prop("scrollbar-auto-thumb", r["brand"])
+    prop("scrollbar-auto-track", r["crust"])
+    prop("scrollbar-auto-scrollbar-color-thumb", r["brand"])
+    prop("scrollbar-auto-scrollbar-color-track", r["crust"])
+
+    # Misc
+    lines.append("    /* Misc */")
+    for token, key in [
+        ("guild-boosting-pink", "pink"), ("guild-boosting-blue", "blue"),
+        ("guild-boosting-purple", "mauve"), ("premium-perk-yellow", "yellow"),
+        ("premium-perk-purple", "mauve"), ("premium-perk-blue", "blue"),
+        ("premium-perk-green", "green"), ("premium-perk-pink", "pink"),
+        ("premium-perk-orange", "peach"), ("premium-tier-0-blue", "blue"),
+        ("premium-tier-0-purple", "mauve"),
+        ("premium-tier-1-blue-for-gradients", "sapphire"),
+        ("premium-tier-1-dark-blue-for-gradients", "blue"),
+        ("premium-tier-2-purple-for-gradients-2", "mauve"),
+        ("premium-tier-2-pink-for-gradients", "pink"),
+        ("spotify", "green"), ("__adaptive-focus-ring-color", "brand"),
+        ("__spoiler-background-color--hidden", "surface2"),
+    ]:
+        prop(token, r[key])
+    prop("premium-perk-dark-blue", _darken(r["blue"], 10))
+    prop("premium-perk-light-blue", _lighten(r["blue"], 5))
+    prop("premium-tier-2-purple-for-gradients", _darken(r["mauve"], 10))
+    prop("twitch", _darken(r["mauve"], 10))
+    prop("playstation", _darken(r["blue"], 10))
+    prop("__spoiler-warning-background-color", _lighten(r["surface2"], 5))
+
+    lines.append("}")
+    lines.append("")
+    lines.append("::selection {")
+    lines.append(f"    background-color: {_rgba(r['brand'], 0.6)};")
+    lines.append("}")
+    return "\n".join(lines) + "\n"
+
+
+def generate_discord(light_p, dark_p, output_dir):
+    out = os.path.join(output_dir, "discord")
+    os.makedirs(out, exist_ok=True)
+
+    with open(os.path.join(out, "nibelung.theme.css"), "w", encoding="utf-8") as f:
+        f.write(_discord_theme(light_p, "Nibelung", "light"))
+    with open(os.path.join(out, "nibelung-dark.theme.css"), "w", encoding="utf-8") as f:
+        f.write(_discord_theme(dark_p, "Nibelung Dark", "dark"))
+
+    print(f"Discord: wrote {out}")
+
+
 # Helpers
 # ---------------------------------------------------------------------------
 # Zed backend
@@ -1375,7 +1707,7 @@ def main():
     parser.add_argument("--output-dir", default="dist",
                         help="Output directory (default: dist)")
     parser.add_argument("--target",     default="all",
-                        choices=["vscode", "zed", "neovim", "intellij", "alacritty", "caelestia", "opencode", "pi", "omp", "all"],
+                        choices=["vscode", "zed", "neovim", "intellij", "alacritty", "caelestia", "opencode", "pi", "omp", "discord", "all"],
                         help="Which backend to generate (default: all)")
     args = parser.parse_args()
 
@@ -1396,6 +1728,7 @@ def main():
         "opencode":   generate_opencode,
         "pi":         generate_pi,
         "omp":         generate_omp,
+        "discord":    generate_discord,
     }
 
     targets = list(generators.keys()) if args.target == "all" else [args.target]

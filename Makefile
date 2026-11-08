@@ -81,11 +81,13 @@ test-export: export
 	@python3 -m json.tool dist/pi/themes/nibelung-dark.json > /dev/null
 	@python3 -m json.tool dist/omp/themes/nibelung.json > /dev/null
 	@python3 -m json.tool dist/omp/themes/nibelung-dark.json > /dev/null
+	@python3 -c "css = open('dist/discord/nibelung.theme.css').read(); assert '@name' in css and css.count('{') == css.count('}')"
+	@python3 -c "css = open('dist/discord/nibelung-dark.theme.css').read(); assert '@name' in css and css.count('{') == css.count('}')"
 	@echo "All export validations passed"
 
-.PHONY: install install-alacritty install-caelestia install-zed
+.PHONY: install install-alacritty install-caelestia install-zed install-discord
 
-install: install-alacritty install-caelestia install-zed
+install: install-alacritty install-caelestia install-zed install-discord
 
 install-alacritty: export
 	@echo "=== Installing Alacritty themes ==="
@@ -108,3 +110,9 @@ install-zed: export
 	mkdir -p ~/.config/zed/themes
 	cp dist/zed/themes/nibelung.json ~/.config/zed/themes/nibelung.json
 	@echo "Zed: installed to ~/.config/zed/themes/"
+
+install-discord: export
+	@echo "=== Installing Discord themes (Vencord) ==="
+	mkdir -p ~/.config/Vencord/themes
+	cp dist/discord/nibelung.theme.css dist/discord/nibelung-dark.theme.css ~/.config/Vencord/themes/
+	@echo "Discord: installed to ~/.config/Vencord/themes/"
