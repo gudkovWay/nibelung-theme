@@ -1,4 +1,6 @@
-[[https://raw.githubusercontent.com/veschin/nibelung-theme/refs/heads/main/nibelung.png]]
+#+begin_html
+<img src="nibelung.webp" alt="Nibelung" width="100%">
+#+end_html
 * Why Nibelung?
 Nibelung Theme is a minimalist Emacs color scheme blending cool gray tones and subtle blue accents, reminiscent of the Nebelung cat's silky fur. Designed for developers who value clarity and focus during long coding sessions.
 #+begin_quote
@@ -32,6 +34,7 @@ All non-Emacs themes are generated from the Emacs palette via ~make export~. Lig
 ** Table of Contents
 - [[#emacs][Emacs]] (straight, Doom, package.el)
 - [[#vscode][VSCode]]
+- [[#zed][Zed]]
 - [[#neovim][Neovim]]
 - [[#intellij-idea][IntelliJ IDEA]]
 - [[#alacritty][Alacritty]]
@@ -76,6 +79,19 @@ git clone https://github.com/veschin/nibelung-theme.git /tmp/nibelung && \
   cp -r /tmp/nibelung/dist/vscode ~/.vscode/extensions/nibelung-theme
 #+end_src
 ~Ctrl+K Ctrl+T~ -> select "Nibelung" or "Nibelung Dark"
+** Zed
+#+begin_src sh
+mkdir -p ~/.config/zed/themes && \
+  curl -o ~/.config/zed/themes/nibelung.json \
+  https://raw.githubusercontent.com/veschin/nibelung-theme/main/dist/zed/themes/nibelung.json
+#+end_src
+~Cmd/Ctrl+K Cmd/Ctrl+T~ -> select "Nibelung" or "Nibelung Dark", or set it in ~settings.json~:
+#+begin_src json
+{ "theme": { "mode": "system", "light": "Nibelung", "dark": "Nibelung Dark" } }
+#+end_src
+Zed highlight styles support per-token backgrounds, so the comment background carries over from Emacs (VSCode cannot do this).
+
+To install as an extension instead: ~Extensions -> Install Dev Extension~ and point it at ~dist/zed~.
 ** Neovim
 #+begin_src sh
 git clone https://github.com/veschin/nibelung-theme.git /tmp/nibelung && \
